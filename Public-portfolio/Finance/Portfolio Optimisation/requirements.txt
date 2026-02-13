@@ -1,0 +1,8 @@
+yfinance
+matplotlib
+pandas
+numpy
+scipy
+fredapi
+python-docx
+python-dotenv
