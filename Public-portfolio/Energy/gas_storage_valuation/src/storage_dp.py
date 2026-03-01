@@ -112,21 +112,40 @@ def optimal_policy_perfect_foresight(
     df_disc = 1.0
 
     for t, (dt, p) in enumerate(prices.items()):
+        p = float(p)
         a = int(action[t, inv_idx])
-        amt = float(delta[t, inv_idx])
+        amt_dp = float(delta[t, inv_idx])
 
+        # IMPORTANT:
+        # The DP is solved on an inventory grid, but the forward rollout
+        # can drift slightly off-grid due to mapping/rounding. Clamp both
+        # (a) action volumes to feasible limits given *actual* inventory
+        # and (b) inventory to physical bounds to avoid negative inventory.
         cash = 0.0
-        if a == 1 and amt > 0:
+        if a == 1 and amt_dp > 0:
+            # Can't inject beyond remaining capacity or daily inj_rate
+            max_inj = min(params.inj_rate, max(0.0, params.capacity - inv))
+            amt = min(amt_dp, max_inj)
             inv = inv + amt * (1.0 - params.loss_frac)
-            cash = -amt * (float(p) + params.inj_fee)
-        elif a == -1 and amt > 0:
+            inv = float(np.clip(inv, 0.0, params.capacity))
+            cash = -amt * (p + params.inj_fee)
+        elif a == -1 and amt_dp > 0:
+            # Can't withdraw beyond inventory or daily wdr_rate
+            max_wdr = min(params.wdr_rate, max(0.0, inv))
+            amt = min(amt_dp, max_wdr)
             inv = inv - amt
-            cash = amt * (float(p) - params.wdr_fee)
+            inv = float(np.clip(inv, 0.0, params.capacity))
+            cash = amt * (p - params.wdr_fee)
+        else:
+            amt = 0.0
+            inv = float(np.clip(inv, 0.0, params.capacity))
 
         npv += df_disc * cash
-        rows.append({"date": dt, "price": float(p), "action": a, "quantity_mwh": amt, "inventory_mwh": inv, "cashflow_eur": cash})
+        rows.append({"date": dt, "price": p, "action": a, "quantity_mwh": amt, "inventory_mwh": inv, "cashflow_eur": cash})
         df_disc *= disc
-        inv_idx = int(np.argmin(np.abs(inv_grid - inv)))
+        # Use floor mapping to avoid selecting a grid point above actual inv
+        # (which can cause the DP to "withdraw" more than you physically have).
+        inv_idx = _idx_floor(inv_grid, inv)
 
     # add terminal liquidation (already included in value function, but add explicit cash for policy table)
     terminal_cash = inv * (float(prices.iloc[-1]) - params.wdr_fee)

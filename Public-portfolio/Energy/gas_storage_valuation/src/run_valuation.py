@@ -77,7 +77,8 @@ def main():
     # -----------------
     start_mc = last_spot_plus_1
     future_dates = pd.date_range(start_mc, periods=args.n_days, freq="D")
-    theta = build_seasonal_theta(future_dates)  
+    theta = build_seasonal_theta(future_dates, spot_history=spot, price_col="spot_eur_mwh")
+  
 
     paths = simulate_ou_paths(
         s0=float(spot["spot_eur_mwh"].iloc[-1]),

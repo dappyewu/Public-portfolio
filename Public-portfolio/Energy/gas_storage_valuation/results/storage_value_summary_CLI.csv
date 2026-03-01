@@ -1,2 +1,2 @@
 intrinsic_npv_eur,mc_upper_bound_mean_eur,mc_upper_bound_p10_eur,mc_upper_bound_p90_eur,n_days,n_paths,seed,notes
-1348.9070050251175,5527.615657021368,2869.153655646258,9211.402855659931,365,200,7,MC uses perfect-foresight DP per path -> upper bound (not risk-neutral pricing).
+1348.0777386934592,7331.731693980765,3575.2775946154143,12349.71733150433,365,200,7,MC uses perfect-foresight DP per path -> upper bound (not risk-neutral pricing).

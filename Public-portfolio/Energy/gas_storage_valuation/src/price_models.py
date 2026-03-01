@@ -88,15 +88,79 @@ def simulate_ou_paths(
 
 def build_seasonal_theta(
     dates: pd.DatetimeIndex,
-    base_price: float = 30.0,
-    winter_amplitude: float = 0.5,
-    phase_shift_days: int = 15,
+    spot_history: pd.Series | pd.DataFrame,
+    price_col: str = "spot_eur_mwh",
+    use_log: bool = True,
+    fill_method: str = "overall_mean",
 ) -> pd.Series:
-    """Create a simple seasonal long-run mean for log-price.
-
-    winter_amplitude controls how much higher winter is than summer (in log terms).
     """
-    doy = dates.dayofyear.to_numpy()
-    season = winter_amplitude * np.cos(2 * np.pi * (doy - phase_shift_days) / 365.25)
-    theta = np.log(base_price) + season
-    return pd.Series(theta, index=dates, name="theta_log")
+    Build seasonal theta(t) using monthly averages from historical spot data.
+
+    Parameters
+    ----------
+    dates : pd.DatetimeIndex
+        Dates you want theta for (e.g. simulation/valuation daily horizon).
+    spot_history : pd.Series or pd.DataFrame
+        Historical spot prices used to estimate seasonality.
+        - If Series: index should be datetime-like and values are prices (or log-prices if use_log=False and already logged).
+        - If DataFrame: must contain `price_col` and have a DatetimeIndex or a 'date' column.
+    price_col : str
+        Column name to use if spot_history is a DataFrame.
+    use_log : bool
+        If True, theta is computed in log space: log(price).
+    fill_method : str
+        What to do if some months are missing in history:
+        - "overall_mean": fill missing months with the overall mean of the history (in same space: log or price)
+        - "ffill_bfill": fill missing months by forward/backward filling the monthly means
+
+    Returns
+    -------
+    pd.Series
+        theta_log indexed by `dates` with name="theta_log".
+    """
+    # --- Coerce spot_history into a Series with DatetimeIndex ---
+    if isinstance(spot_history, pd.DataFrame):
+        if isinstance(spot_history.index, pd.DatetimeIndex):
+            s = spot_history[price_col].copy()
+        elif "date" in spot_history.columns:
+            tmp = spot_history.copy()
+            tmp["date"] = pd.to_datetime(tmp["date"])
+            s = tmp.set_index("date")[price_col].copy()
+        else:
+            raise ValueError("spot_history DataFrame must have a DatetimeIndex or a 'date' column.")
+    else:
+        s = spot_history.copy()
+        if not isinstance(s.index, pd.DatetimeIndex):
+            s.index = pd.to_datetime(s.index)
+
+    s = s.sort_index().dropna()
+
+    if use_log:
+        # guard against non-positive prices
+        if (s <= 0).any():
+            raise ValueError("Spot history contains non-positive prices; cannot take log.")
+        x = np.log(s)
+    else:
+        x = s.astype(float)
+
+    # --- Compute monthly means from history (month-of-year seasonality) ---
+    monthly_means = x.groupby(x.index.month).mean()  # index = 1..12
+
+    # --- Handle missing months robustly ---
+    all_months = pd.Index(range(1, 13), name="month")
+    monthly_means = monthly_means.reindex(all_months)
+
+    if monthly_means.isna().any():
+        if fill_method == "overall_mean":
+            monthly_means = monthly_means.fillna(x.mean())
+        elif fill_method == "ffill_bfill":
+            monthly_means = monthly_means.ffill().bfill()
+        else:
+            raise ValueError("fill_method must be 'overall_mean' or 'ffill_bfill'.")
+
+    # --- Map requested dates to month-of-year mean ---
+    dates = pd.DatetimeIndex(dates)
+    theta_vals = monthly_means.loc[dates.month].to_numpy()
+
+    theta = pd.Series(theta_vals, index=dates, name="theta_log")
+    return theta
