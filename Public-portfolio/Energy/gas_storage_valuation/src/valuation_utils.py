@@ -18,24 +18,44 @@ def intrinsic_value_from_forward(
     We expand monthly forward prices to daily by forward-filling within each month.
     This gives a clean, explainable baseline valuation.
     """
+
     fwd = forward_monthly.copy()
-    fwd["contract_month"] = pd.to_datetime(fwd["contract_month"] + "-01")
-    fwd = fwd.sort_values("contract_month").set_index("contract_month")
+    if "delivery_month" in fwd.columns:
+        col = "delivery_month"
+        # accept either YYYY-MM or DD/MM/YYYY strings
+        fwd[col] = fwd[col].astype(str).str.strip()
+        dt_ym = pd.to_datetime(fwd[col], format="%Y-%m", errors="coerce")
+        dt_dmy = pd.to_datetime(fwd[col], format="%d/%m/%Y", errors="coerce")
+        fwd["contract_month"] = np.where(dt_ym.notna(), dt_ym, dt_dmy)
+        fwd["contract_month"] = pd.to_datetime(fwd["contract_month"], errors="raise")
+    elif "contract_month" in fwd.columns:
+        col = "contract_month"
+        # accept YYYY-MM and coerce to month start
+        fwd["contract_month"] = pd.to_datetime(fwd[col].astype(str).str.strip(), errors="raise")
+    else:
+        raise ValueError("forward_monthly must have a 'delivery_month' or 'contract_month' column")
+
+    # normalise to month-start timestamp (YYYY-MM-01)
+    fwd["contract_month"] = fwd["contract_month"].dt.to_period("M").dt.to_timestamp()
+
+    fwd = (
+        fwd.sort_values("contract_month")
+           .groupby("contract_month", as_index=False)["fwd_eur_mwh"]
+           .last()
+    )
+    fwd = fwd.set_index("contract_month")
 
     dates = pd.date_range(pd.to_datetime(start_date), periods=n_days, freq="D")
-    month_starts = dates.to_period("M").to_timestamp()
+    month_start = dates.to_period("M").to_timestamp()
+    daily_prices = pd.Series(month_start, index=dates).map(fwd["fwd_eur_mwh"]).astype(float)
+    # if curve shorter than horizon, carry last observed forward price forward
+    daily_prices = daily_prices.ffill()
+    if daily_prices.isna().any():
+        missing = pd.Series(month_start[daily_prices.isna()]).unique()
+        raise ValueError(f"Still missing forward prices for months: {missing[:10]}")
 
-    # map each day to its contract month
-    daily_prices = pd.Series(index=dates, dtype=float)
-    for d in dates:
-        m = d.to_period("M").to_timestamp()
-        if m in fwd.index:
-            daily_prices.loc[d] = float(fwd.loc[m, "fwd_eur_mwh"])
-        else:
-            # if beyond curve, use last known
-            daily_prices.loc[d] = float(fwd["fwd_eur_mwh"].iloc[-1])
-
-    value, policy = optimal_policy_perfect_foresight(daily_prices, params=params, grid_size=250)
+    # grid_size=200
+    value, policy = optimal_policy_perfect_foresight(daily_prices, params=params, grid_size=200)
     return value, policy
 
 
