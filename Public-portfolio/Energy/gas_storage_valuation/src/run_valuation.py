@@ -70,7 +70,7 @@ def main():
 
 
     pol_intr.to_csv(outdir / "optimal_policy_intrinsic_CLI.csv", index=False)
-    (outdir / "intrinsic_value_eur.txt").write_text(f"{intrinsic:.6f}\n")
+    (outdir / "intrinsic_value_eur_CLI.txt").write_text(f"{intrinsic:.6f}\n")
 
     # -----------------
     # Monte Carlo upper bound (perfect-foresight DP per path)
