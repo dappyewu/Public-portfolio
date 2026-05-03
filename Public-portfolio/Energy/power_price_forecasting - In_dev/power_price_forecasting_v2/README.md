@@ -8,11 +8,11 @@ Day-ahead prices clear in a single auction at 11:00 CET each day. By that moment
 2. **Wind generation forecast** 
 3. **Solar generation forecast** 
 4. **Gas price** (TTF as a proxy for NBP — sets CCGT marginal cost)
-5. **Carbon price** (KEUA ETF as a proxy for UKA — adds to CCGT marginal cost)
+5. **Carbon price** (adds to CCGT marginal cost)
 
 Together these tell the model **where on the merit-order curve the price-setting plant will sit** and roughly **what it will charge**. That makes "given tomorrow's forecasts, what will prices be?" the canonical short-term forecasting problem in this market.
 
-In addition, features like engineers calendar and lagged-price will be added to help predict the auction's hourly clearing price. Methodology is causally honest by construction: every input is published *before* the auction it's predicting.
+In addition, features like engineers calendar and lagged-price will be added to help predict the auction's hourly clearing price. 
 
 ## Architecture 
 
