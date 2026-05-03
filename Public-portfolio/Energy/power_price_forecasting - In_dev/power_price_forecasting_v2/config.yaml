@@ -1,0 +1,45 @@
+# v2 config — Elexon power data + Yahoo Finance fuel data.
+
+market:
+  country_code: GB
+  timezone: Europe/London
+
+data:
+
+  start: '2023-08-01'
+  end:   '2025-12-31'
+  raw_dir: data/raw
+  processed_dir: data/processed
+  api_base: 'https://data.elexon.co.uk/bmrs/api/v1'
+  request_delay_s: 0.4
+
+# Yahoo Finance tickers used as proxies for the GB-specific products.
+# TTF=F (gas futures)        -> NBP gas proxy (correlation > 0.95)
+# KEUA  (EUA carbon ETF)     -> UKA carbon proxy. 
+
+fuel:
+  ttf_gas_ticker: 'TTF=F'
+  eua_carbon_ticker: 'KEUA'
+  lag_days: 1                # auction at 11:00 CET uses yesterday's close
+
+features:
+  price_lags: [24, 48, 168]
+  rolling_windows: [24, 168]
+  use_holidays: true
+  holiday_country: GB
+
+model:
+  test_horizon_days: 90
+  cv_folds: 5
+  lightgbm:
+    n_estimators: 800
+    learning_rate: 0.05
+    num_leaves: 64
+    min_data_in_leaf: 50
+    feature_fraction: 0.9
+    bagging_fraction: 0.9
+    bagging_freq: 5
+    random_state: 42
+
+output:
+  figures_dir: reports/figures
