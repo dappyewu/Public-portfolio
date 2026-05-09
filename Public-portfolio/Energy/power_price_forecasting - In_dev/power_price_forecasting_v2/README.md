@@ -10,15 +10,13 @@ Day-ahead prices clear in a single auction at 11:00 CET each day. By that moment
 4. **Gas price** (TTF as a proxy for NBP — sets CCGT marginal cost)
 5. **Carbon price** (adds to CCGT marginal cost)
 
-Together these tell the model **where on the merit-order curve the price-setting plant will sit** and roughly **what it will charge**. That makes "given tomorrow's forecasts, what will prices be?" the canonical short-term forecasting problem in this market.
-
 In addition, features like engineers calendar and lagged-price will be added to help predict the auction's hourly clearing price. 
 
 ## Architecture 
 
 ![Market flow and modelling pipeline](docs/architecture.png)
 
-Top half, shows how the price gets set. Generators bid, the TSO publishes day-ahead load/wind/solar forecasts, commodity markets set CCGT marginal cost, and the auction clears at 11:00 CET. 
+Top half, shows how the price gets set. Generators bid, the TSO publishes day-ahead load/wind/solar forecast and the auction clears at 11:00 CET. 
 
 Bottom half, the forecasting pipeline that consumes those public inputs
 
@@ -59,10 +57,10 @@ notes worth flagging,
 | Stage | What it does | Why it matters |
 |---|---|---|
 | **Data layer** | Pulls hourly Elexon series + daily Yahoo Finance fuel prices, lags fuel by 1 day | Real, free, regulator/exchange-published data|
-| **Features** | Calendar (hour, dow, month, weekend, holiday + sin/cos), fundamentals (residual_load, renewable_share), 24/48/168h lagged prices, 24/168h rolling stats | Captures daily/weekly cycles and the load-net-renewables signal that drives merit order; lagged prices capture autocorrelation |
+| **Features** | Calendar (hour, dow, month, weekend, holiday), fundamentals (residual_load, renewable_share), 24/48/168h lagged prices, 24/168h rolling stats | Captures daily/weekly cycles |
 | **Models** | Seasonal-naive (price 168h ago) → Ridge regression → LightGBM | Each step earns the next: the baseline anchors expectations, linear shows the structure, GBM captures non-linearity in the merit-order curve |
-| **Validation** | Expanding-window walk-forward CV, 5 folds × 18 days | Prevents leakage; mirrors how a model would be retrained in production |
-| **Metrics** | MAE (headline), RMSE (tail-sensitive), MAPE (with `y≥1` floor | MAE is most interpretable in £/MWh; MAPE can blow up on near-zero prices in GB |
+| **Validation** | Expanding-window walk-forward CV, 5 folds × 18 days | Prevents leakage, mirrors how a model would be retrained in production |
+| **Metrics** | MAE (headline), RMSE (tail-sensitive), MAPE (with `y≥1` floor | MAE is most interpretable in £/MWh, MAPE can blow up on near-zero prices in GB |
 | **Diagnostics** | Actual vs predicted, residuals by hour, gain importance, SHAP values | Catches structural bias the headline metric hides |
 
 ## Headline results
@@ -150,7 +148,7 @@ Or step through `notebooks/01_walkthrough.ipynb` for the narrated version with d
 | Driver | Why it's out of scope |
 |---|---|
 | **Plant outages** | A 2 GW nuclear trip materially shifts the merit order |
-| **Interconnector flows / continental prices** | GB has ~9 GW of import capacity; needs ENTSO-E for DE/FR/NL prices and capacity allocations |
+| **Interconnector flows / continental prices** | GB has ~9 GW of import capacity. needs ENTSO-E for DE/FR/NL prices and capacity allocations |
 | **Wind/solar forecast errors** | Pair forecast with actual, lag the residual error. captures variance in renewables performance vs published forecasts |
 | **Battery / DSR participation** | Elexon publishes some battery dispatch. However, this needs mor time invested to  understand |
 | **CfD bid behaviour** | Wind farms on CfDs bid negative (their revenue is the strike price, not the market). Drives most of the negative-price events in GB |
