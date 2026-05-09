@@ -7,8 +7,8 @@ Day-ahead prices clear in a single auction at 11:00 CET each day. By that moment
 1. **Load forecast** for tomorrow (TSO-published demand)
 2. **Wind generation forecast** 
 3. **Solar generation forecast** 
-4. **Gas price** (TTF as a proxy for NBP — sets CCGT marginal cost)
-5. **Carbon price** (adds to CCGT marginal cost)
+4. **Gas price** (TTF as a proxy for NBP,  Contributes to CCGT marginal cost)
+5. **Carbon price** (Contributes to CCGT marginal cost)
 
 In addition, features like engineers calendar and lagged-price will be added to help predict the auction's hourly clearing price. 
 
