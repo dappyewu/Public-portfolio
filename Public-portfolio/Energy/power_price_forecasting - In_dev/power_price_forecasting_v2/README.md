@@ -25,16 +25,15 @@ Bottom half, the forecasting pipeline that consumes those public inputs
 
 ## Data sources
 
-| Series | Source | Endpoint / ticker |
-|---|---|---|
-| `day_ahead_price` | Elexon BMRS | MID dataset, dataProvider=APXMIDP  |
-| `load_forecast` | Elexon BMRS | `/forecast/demand/total/day-ahead` |
-| `wind_forecast` | Elexon BMRS | WINDFOR with `publishDateTime` filter + 12h lead-time gate |
-| `solar_forecast` | Elexon BMRS | AGWS actuals shifted +24h (see note below) |
-| `ttf_gas` | Yahoo Finance | `TTF=F` front-month future |
-| `eua_carbon` | Yahoo Finance | `KEUA` (KraneShares EUA ETF) |
+| Series | Source | 
+|---|---|
+| `day_ahead_price` | Elexon BMRS |
+| `load_forecast` | Elexon BMRS | 
+| `wind_forecast` | Elexon BMRS | 
+| `solar_forecast` | Elexon BMRS | 
+| `ttf_gas` | Yahoo Finance | 
+| `eua_carbon` | Yahoo Finance | 
 
-Elexon BMRS is fully open and Yahoo Finance is free.
 
 Elexon has retired its free day-ahead solar forecast endpoints. The only freely available solar series is AGWS actuals. This is a proxy by shifting timestamps forward by 24 hours, so the feature at hour T corresponds to “yesterday’s actual at T”. This information that is genuinely available ahead of the day-ahead auction but can be different to th forecast. This approach is inherently noisier than a true forecast, as it cannot capture day specific effects such as cloud cover. On production use, it should be replaced with a proper solar forecast.
 
