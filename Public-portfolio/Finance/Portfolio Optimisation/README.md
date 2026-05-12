@@ -4,6 +4,7 @@ A lightweight portfolio allocation + backtesting pipeline. It ingests a simple â
 
 Produces data-driven investment allocation recommendations to optimize risk-adjusted performance, primarily using quantitative methods with limited fundamental inputs. Historical performance is not indicative of future returns
 
+Web implementation - https://dapo-portfolio-optimizer.streamlit.app/
 ---
 
 
